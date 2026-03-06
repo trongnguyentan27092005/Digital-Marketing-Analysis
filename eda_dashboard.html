@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phần 3: EDA & Chẩn đoán — Phong Nha Kẻ Bàng</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root {
+    --pnkb: #2196F3;
+    --bana: #FF5722;
+    --hue:  #4CAF50;
+    --dark: #1A1A2E;
+    --card: #ffffff;
+    --bg:   #F0F4F8;
+    --text: #2D2D2D;
+    --sub:  #6B7280;
+    --border: #E5E7EB;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+    color: #fff;
+    padding: 40px 32px 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .header p  { color: rgba(255,255,255,.7); font-size: 15px; max-width: 700px; margin: 0 auto; }
+  .header-meta {
+    display: flex; gap: 24px; justify-content: center; margin-top: 24px; flex-wrap: wrap;
+  }
+  .header-meta .chip {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: #fff;
+    backdrop-filter: blur(4px);
+  }
+  .header-meta .chip strong { color: #63B3ED; }
+
+  /* ── NAV TABS ── */
+  .nav {
+    background: #fff;
+    border-bottom: 2px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    display: flex; gap: 0; overflow-x: auto;
+    padding: 0 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .nav-btn {
+    background: none; border: none;
+    padding: 14px 20px;
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--sub);
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: all .2s;
+  }
+  .nav-btn:hover { color: var(--pnkb); }
+  .nav-btn.active {
+    color: var(--pnkb);
+    border-bottom-color: var(--pnkb);
+    background: rgba(33,150,243,.04);
+  }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .section-title {
+    font-size: 22px; font-weight: 700;
+    color: var(--dark); margin-bottom: 6px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--pnkb);
+    display: inline-block;
+  }
+  .section-sub {
+    color: var(--sub); font-size: 13.5px; margin-bottom: 24px; margin-top: 6px;
+  }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-1 { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px; }
+  @media(max-width:900px) { .grid-2,.grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    border: 1px solid var(--border);
+  }
+  .card-title {
+    font-size: 14px; font-weight: 600;
+    color: var(--sub); text-transform: uppercase;
+    letter-spacing: .5px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title .icon { font-size: 16px; }
+
+  /* ── KPI CARDS ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(6,1fr);
+    gap: 14px; margin-bottom: 22px;
+  }
+  @media(max-width:1100px) { .kpi-row { grid-template-columns: repeat(3,1fr); } }
+  @media(max-width:600px)  { .kpi-row { grid-template-columns: repeat(2,1fr); } }
+  .kpi-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 16px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+    border: 1px solid var(--border);
+    transition: transform .2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-value { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+  .kpi-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+
+  /* ── DEST TABS ── */
+  .dest-tabs {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .dest-tab {
+    padding: 8px 20px; border-radius: 20px;
+    border: 2px solid var(--border);
+    cursor: pointer; font-size: 13.5px; font-weight: 600;
+    background: #fff; color: var(--sub);
+    transition: all .2s;
+  }
+  .dest-tab[data-color="pnkb"].active { background: #E3F2FD; border-color: var(--pnkb); color: var(--pnkb); }
+  .dest-tab[data-color="bana"].active { background: #FBE9E7; border-color: var(--bana); color: var(--bana); }
+  .dest-tab[data-color="hue"].active  { background: #E8F5E9; border-color: var(--hue);  color: var(--hue);  }
+
+  .dest-panel { display: none; }
+  .dest-panel.active { display: block; }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600;
+    color: #fff; white-space: nowrap;
+  }
+
+  /* ── TABLE ── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    background: #F8FAFC; font-weight: 600;
+    padding: 10px 12px; text-align: left;
+    border-bottom: 2px solid var(--border); color: var(--sub);
+    font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
+  }
+  .data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .data-table tr:hover td { background: #F8FAFC; }
+
+  .spike-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .spike-table th,
+  .spike-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  .spike-table th { background: #F8FAFC; font-size: 12px; color: var(--sub); font-weight: 600; }
+
+  /* ── INSIGHT BOX ── */
+  .insight-box {
+    background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
+    border-left: 4px solid var(--pnkb);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px; margin-bottom: 20px;
+    font-size: 13.5px;
+  }
+  .insight-box.orange { background: linear-gradient(135deg,#FFF7ED,#FEE2D5); border-color: var(--bana); }
+  .insight-box.green  { background: linear-gradient(135deg,#F0FDF4,#DCFCE7); border-color: var(--hue); }
+  .insight-box strong { display: block; font-size: 14px; margin-bottom: 4px; }
+
+  /* ── LEGEND ── */
+  .legend {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    font-size: 13px; margin-bottom: 16px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center; padding: 28px;
+    color: var(--sub); font-size: 13px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  canvas { max-height: 360px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>📊 Phần 3: EDA & Chẩn đoán Truyền thông</h1>
+  <p>So sánh mức độ xuất hiện và chiến lược nội dung của Phong Nha – Kẻ Bàng với các điểm đến cạnh tranh</p>
+  <div class="header-meta">
+    <div class="chip">📅 07/11/2003 — 01/11/2026</div>
+    <div class="chip">📰 Tổng: <strong>1,053</strong> bài viết</div>
+    <div class="chip">🗺️ <strong>3</strong> điểm đến</div>
+    <div class="chip">📡 <strong>39</strong> nguồn báo chí</div>
+    <div class="chip">🏷️ <strong>6</strong> loại nội dung</div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchTab('trend',this)">1. Xu hướng truyền thông</button>
+  <button class="nav-btn" onclick="switchTab('benchmark',this)">2. Benchmark KPI</button>
+  <button class="nav-btn" onclick="switchTab('strategy',this)">3. Chiến lược nội dung</button>
+  <button class="nav-btn" onclick="switchTab('spikes',this)">4. Sự kiện & Spike</button>
+  <button class="nav-btn" onclick="switchTab('bestpractice',this)">5. Best Practices</button>
+  <button class="nav-btn" onclick="switchTab('diagnosis',this)">6. Chẩn đoán & Kết luận</button>
+</nav>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 1 — XU HƯỚNG
+═══════════════════════════════════════════════════ -->
+<section id="trend" class="section active">
+  <div class="section-title">1. So sánh Xu hướng Truyền thông theo Thời gian</div>
+  <div class="section-sub">Phân tích số lượng bài viết theo tháng/năm — xác định giai đoạn truyền thông cao điểm của từng điểm đến</div>
+
+  <div class="insight-box">
+    <strong>🔍 Nhận xét tổng quan</strong>
+    Cố đô Huế dẫn đầu với 483 bài (45.9%), tiếp theo là Phong Nha – Kẻ Bàng (385 bài — 36.6%) và Ba Na Hills (185 bài — 17.6%). Khoảng cách giữa Phong Nha và Cố đô Huế là <strong>98 bài viết</strong> — đây là khoảng trống truyền thông cần thu hẹp.
+  </div>
+
+  <div class="grid-1">
+    <div class="card">
+      <div class="card-title"><span class="icon">📈</span> Xu hướng đăng bài theo Năm (2012–2026)</div>
+      <canvas id="chartYearly"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-1">
+    <div class="card">
+      <div class="card-title"><span class="icon">📅</span> Xu hướng đăng bài theo Tháng (toàn bộ giai đoạn)</div>
+      <canvas id="chartMonthly" style="max-height:280px"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="icon">🗓️</span> Tính mùa vụ — Phân bố theo Tháng (%)</div>
+      <canvas id="chartSeasonality"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📆</span> Phân bố đăng bài theo Ngày trong Tuần (%)</div>
+      <canvas id="chartDow"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 2 — BENCHMARK KPI
+═══════════════════════════════════════════════════ -->
+<section id="benchmark" class="section">
+  <div class="section-title">2. Benchmark Mức độ Phủ Truyền thông</div>
+  <div class="section-sub">Đánh giá vị trí của Phong Nha – Kẻ Bàng so với các đối thủ: tổng bài viết, share of voice, đa dạng nguồn, tần suất đăng bài</div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pnkb)"></div> Phong Nha Kẻ Bàng</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--bana)"></div> Ba Na Hills</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--hue)"></div> Cố đô Huế</div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="icon">🥧</span> Share of Voice — Tỷ lệ bài viết</div>
+      <canvas id="chartSov"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🏆</span> Radar KPI — Chỉ số tổng hợp (chuẩn hóa)</div>
+      <canvas id="chartRadar"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><span class="icon">📰</span> Số nguồn báo đưa tin</div>
+      <canvas id="chartSrcDiv"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📝</span> Độ dài bài viết TB (ký tự)</div>
+      <canvas id="chartAvgLen"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">⚡</span> Tần suất đăng bài (bài/tháng)</div>
+      <canvas id="chartFreq"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📡</span> Top 8 Nguồn Báo chí — So sánh theo Điểm đến</div>
+    <canvas id="chartSrc" style="max-height:300px"></canvas>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 3 — CHIẾN LƯỢC NỘI DUNG
+═══════════════════════════════════════════════════ -->
+<section id="strategy" class="section">
+  <div class="section-title">3. Phân tích Chiến lược Nội dung</div>
+  <div class="section-sub">Khám phá content mix, từ khóa nổi bật và thông điệp truyền thông của từng điểm đến</div>
+
+  <div class="grid-1">
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span> Content Mix — Phân loại Nội dung theo Điểm đến (%)</div>
+      <canvas id="chartCtMix"></canvas>
+    </div>
+  </div>
+
+  <div class="dest-tabs" id="stratTabs">
+    <button class="dest-tab active" data-color="pnkb" onclick="switchDest('strat','pnkb',this)">🔵 Phong Nha Kẻ Bàng</button>
+    <button class="dest-tab" data-color="bana" onclick="switchDest('strat','bana',this)">🟠 Ba Na Hills</button>
+    <button class="dest-tab" data-color="hue"  onclick="switchDest('strat','hue',this)">🟢 Cố đô Huế</button>
+  </div>
+
+  <div id="strat-pnkb" class="dest-panel active">
+    
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#2196F3">385</div>
+            <div class="kpi-label">Tổng bài viết</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#2196F3">36.6%</div>
+            <div class="kpi-label">Share of Voice</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#2196F3">2,646</div>
+            <div class="kpi-label">Độ dài TB (ký tự)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#2196F3">39</div>
+            <div class="kpi-label">Nguồn báo chí</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#2196F3">3.5</div>
+            <div class="kpi-label">Bài / tháng</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#F44336">-82.7%</div>
+            <div class="kpi-label">Tăng trưởng YoY</div>
+        </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">🔑</span> Từ khóa nổi bật trong tiêu đề</div>
+        <canvas id="chartKwPnkb"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🗂️</span> Phân bố loại nội dung</div>
+        <canvas id="chartCtPnkb"></canvas>
+      </div>
+    </div>
+    <div class="insight-box">
+      <strong>💡 Nhận xét — Phong Nha Kẻ Bàng (dựa trên dữ liệu)</strong>
+      Top 2 loại nội dung: <strong>Di sản / Văn hóa (43.4%)</strong> và Thiên nhiên / Sinh thái (27.0%).
+      Bài về Quảng bá/Marketing chỉ chiếm <strong>1.8%</strong> — thấp nhất trong 3 điểm đến (Ba Na Hills: 2.7%, Cố đô Huế: 0.4%).
+      Tháng có nhiều bài nhất theo dữ liệu: <strong>T2, T6, T7</strong>.
+      Từ khóa xuất hiện nhiều nhất trong tiêu đề bài viết: <strong>hang động, vườn quốc, quốc gia</strong>.
+      Nguồn báo đưa tin nhiều nhất: <strong>Thanh Niên</strong> (67 bài).
+    </div>
+  </div>
+  <div id="strat-bana" class="dest-panel">
+    
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#FF5722">185</div>
+            <div class="kpi-label">Tổng bài viết</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#FF5722">17.6%</div>
+            <div class="kpi-label">Share of Voice</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#FF5722">5,758</div>
+            <div class="kpi-label">Độ dài TB (ký tự)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#FF5722">6</div>
+            <div class="kpi-label">Nguồn báo chí</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#FF5722">2.2</div>
+            <div class="kpi-label">Bài / tháng</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#F44336">-71.9%</div>
+            <div class="kpi-label">Tăng trưởng YoY</div>
+        </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">🔑</span> Từ khóa nổi bật trong tiêu đề</div>
+        <canvas id="chartKwBana"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🗂️</span> Phân bố loại nội dung</div>
+        <canvas id="chartCtBana"></canvas>
+      </div>
+    </div>
+    <div class="insight-box orange">
+      <strong>💡 Nhận xét — Ba Na Hills (dựa trên dữ liệu)</strong>
+      Độ dài bài viết TB cao nhất: <strong>5,758 ký tự/bài</strong> — cao hơn Phong Nha 3,112 ký tự.
+      Top 2 loại nội dung: <strong>Sự kiện / Lễ hội (71.9%)</strong> và Thiên nhiên / Sinh thái (11.4%).
+      Nguồn báo đưa tin nhiều nhất: <strong>VnExpress</strong> (79 bài).
+      Từ khóa xuất hiện nhiều nhất: <strong>đà nẵng, lễ hội, ưu đãi</strong>.
+      Tháng có nhiều bài nhất theo dữ liệu: <strong>T2, T3, T5</strong>.
+    </div>
+  </div>
+  <div id="strat-hue" class="dest-panel">
+    
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#4CAF50">483</div>
+            <div class="kpi-label">Tổng bài viết</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#4CAF50">45.9%</div>
+            <div class="kpi-label">Share of Voice</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#4CAF50">3,173</div>
+            <div class="kpi-label">Độ dài TB (ký tự)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#4CAF50">6</div>
+            <div class="kpi-label">Nguồn báo chí</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#4CAF50">3.6</div>
+            <div class="kpi-label">Bài / tháng</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" style="color:#F44336">-73.4%</div>
+            <div class="kpi-label">Tăng trưởng YoY</div>
+        </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">🔑</span> Từ khóa nổi bật trong tiêu đề</div>
+        <canvas id="chartKwHue"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🗂️</span> Phân bố loại nội dung</div>
+        <canvas id="chartCtHue"></canvas>
+      </div>
+    </div>
+    <div class="insight-box green">
+      <strong>💡 Nhận xét — Cố đô Huế (dựa trên dữ liệu)</strong>
+      Dẫn đầu tổng bài: <strong>483 bài</strong> và về đa dạng nguồn: 6 nguồn (Phong Nha: 39, Ba Na Hills: 6).
+      Top 2 loại nội dung: <strong>Di sản / Văn hóa (53.8%)</strong> và Sự kiện / Lễ hội (28.8%).
+      Từ khóa xuất hiện nhiều nhất trong tiêu đề: <strong>di tích, triều nguyễn, di sản</strong>.
+      Tháng có nhiều bài nhất theo dữ liệu: <strong>T1, T4, T5</strong>.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 4 — SỰ KIỆN & SPIKE
+═══════════════════════════════════════════════════ -->
+<section id="spikes" class="section">
+  <div class="section-title">4. Phát hiện Sự kiện & Chiến dịch Nổi bật</div>
+  <div class="section-sub">Xác định giai đoạn đối thủ có bùng nổ truyền thông để suy ra hoạt động quảng bá, sự kiện thu hút được chú ý</div>
+
+  <div class="dest-tabs">
+    <button class="dest-tab active" data-color="pnkb" onclick="switchDest('spike','pnkb',this)">🔵 Phong Nha Kẻ Bàng</button>
+    <button class="dest-tab" data-color="bana" onclick="switchDest('spike','bana',this)">🟠 Ba Na Hills</button>
+    <button class="dest-tab" data-color="hue"  onclick="switchDest('spike','hue',this)">🟢 Cố đô Huế</button>
+  </div>
+
+  <div id="spike-pnkb" class="dest-panel active">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📈</span> Timeline bài viết — Phong Nha Kẻ Bàng</div>
+        <canvas id="chartSpikePnkb"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">⚡</span> Giai đoạn bùng nổ truyền thông (Top spike)</div>
+        <table class='spike-table'><tr><th>Thời điểm</th><th>Số bài</th></tr><tr><td><strong>2012-05</strong></td><td><span style='color:#2196F3;font-weight:700'>2 bài</span></td></tr><tr><td><strong>2014-09</strong></td><td><span style='color:#2196F3;font-weight:700'>2 bài</span></td></tr><tr><td><strong>2014-10</strong></td><td><span style='color:#2196F3;font-weight:700'>4 bài</span></td></tr><tr><td><strong>2016-11</strong></td><td><span style='color:#2196F3;font-weight:700'>2 bài</span></td></tr><tr><td><strong>2017-05</strong></td><td><span style='color:#2196F3;font-weight:700'>2 bài</span></td></tr></table>
+        <div style="margin-top:14px;padding:12px;background:#EFF6FF;border-radius:8px;font-size:13px">
+          <strong>📌 Tiêu đề bài viết thực tế trong các giai đoạn spike (từ dữ liệu):</strong>
+          <div style="margin-bottom:10px"><strong style="color:#2196F3">2012-05</strong> &nbsp;—&nbsp; <strong>2 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Khám phá thêm 7km trong động Thiên Đường</li><li style="margin:2px 0;color:#555">17.000 lượt khách đến Phong Nha - Kẻ Bàng dịp lễ</li></ul></div><div style="margin-bottom:10px"><strong style="color:#2196F3">2014-09</strong> &nbsp;—&nbsp; <strong>2 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Đu dây trên không khám phá Phong Nha - Kẻ Bàng</li><li style="margin:2px 0;color:#555">Tiếp tục thực hiện tour khám phá hang Sơn Đoòng</li></ul></div><div style="margin-bottom:10px"><strong style="color:#2196F3">2014-10</strong> &nbsp;—&nbsp; <strong>4 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Sẽ xây dựng cáp treo vào động Sơn Đoòng</li><li style="margin:2px 0;color:#555">Cáp treo vào Sơn Đoòng, nên không?</li><li style="margin:2px 0;color:#555">Bộ Xây dựng muốn đưa cáp treo Sơn Đoòng vào quy hoạch</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="spike-bana" class="dest-panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📈</span> Timeline bài viết — Ba Na Hills</div>
+        <canvas id="chartSpikeBana"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">⚡</span> Giai đoạn bùng nổ truyền thông (Top spike)</div>
+        <table class='spike-table'><tr><th>Thời điểm</th><th>Số bài</th></tr><tr><td><strong>2016-07</strong></td><td><span style='color:#FF5722;font-weight:700'>2 bài</span></td></tr><tr><td><strong>2017-01</strong></td><td><span style='color:#FF5722;font-weight:700'>2 bài</span></td></tr><tr><td><strong>2018-02</strong></td><td><span style='color:#FF5722;font-weight:700'>3 bài</span></td></tr><tr><td><strong>2018-11</strong></td><td><span style='color:#FF5722;font-weight:700'>3 bài</span></td></tr><tr><td><strong>2019-04</strong></td><td><span style='color:#FF5722;font-weight:700'>3 bài</span></td></tr></table>
+        <div style="margin-top:14px;padding:12px;background:#FBE9E7;border-radius:8px;font-size:13px">
+          <strong>📌 Tiêu đề bài viết thực tế trong các giai đoạn spike (từ dữ liệu):</strong>
+          <div style="margin-bottom:10px"><strong style="color:#FF5722">2016-07</strong> &nbsp;—&nbsp; <strong>2 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Rộn ràng tuần lễ "Một thoáng nước Pháp" tại Bà Nà Hills</li><li style="margin:2px 0;color:#555">Bà Nà Hills nhận danh hiệu 'Khu du lịch hàng đầu Việt Nam'</li></ul></div><div style="margin-bottom:10px"><strong style="color:#FF5722">2017-01</strong> &nbsp;—&nbsp; <strong>2 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Gói cả mùa xuân trong carnival Bà Nà Hills</li><li style="margin:2px 0;color:#555">Carnival Tết Đinh Dậu sôi động chưa từng có tại Bà Nà Hills</li></ul></div><div style="margin-bottom:10px"><strong style="color:#FF5722">2018-02</strong> &nbsp;—&nbsp; <strong>3 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Đà Nẵng bắn pháo hoa đêm Giao thừa, đón Tết với đường hoa quy ...</li><li style="margin:2px 0;color:#555">Kings Course – Trải nghiệm đẳng cấp và tuyệt vời cho gôn thủ tại ...</li><li style="margin:2px 0;color:#555">Muôn hoa đua nở tại lễ hội hoa Bà Nà Hills Đà Nẵng</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="spike-hue" class="dest-panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📈</span> Timeline bài viết — Cố đô Huế</div>
+        <canvas id="chartSpikeHue"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">⚡</span> Giai đoạn bùng nổ truyền thông (Top spike)</div>
+        <table class='spike-table'><tr><th>Thời điểm</th><th>Số bài</th></tr><tr><td><strong>2013-03</strong></td><td><span style='color:#4CAF50;font-weight:700'>3 bài</span></td></tr><tr><td><strong>2013-04</strong></td><td><span style='color:#4CAF50;font-weight:700'>5 bài</span></td></tr><tr><td><strong>2013-08</strong></td><td><span style='color:#4CAF50;font-weight:700'>2 bài</span></td></tr><tr><td><strong>2015-02</strong></td><td><span style='color:#4CAF50;font-weight:700'>5 bài</span></td></tr><tr><td><strong>2016-10</strong></td><td><span style='color:#4CAF50;font-weight:700'>2 bài</span></td></tr></table>
+        <div style="margin-top:14px;padding:12px;background:#F0FDF4;border-radius:8px;font-size:13px">
+          <strong>📌 Tiêu đề bài viết thực tế trong các giai đoạn spike (từ dữ liệu):</strong>
+          <div style="margin-bottom:10px"><strong style="color:#4CAF50">2013-03</strong> &nbsp;—&nbsp; <strong>3 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Khởi công bảo tồn phục hồi 2 di tích Huế</li><li style="margin:2px 0;color:#555">Phục hồi di tích Đông Khuyết đài tại Hoàng thành Huế</li><li style="margin:2px 0;color:#555">"Rockstorm" tái ngộ khán giả cố đô Huế</li></ul></div><div style="margin-bottom:10px"><strong style="color:#4CAF50">2013-04</strong> &nbsp;—&nbsp; <strong>5 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Hoa hậu Ngọc Hân gây ấn tượng mạnh trên đất cố đô</li><li style="margin:2px 0;color:#555">Nghề chơi cũng lắm công phu - Kỳ 4: Hai vua chim cảnh ở Huế</li><li style="margin:2px 0;color:#555">Ký kết hợp tác bảo tồn di sản Huế với Luang Prabang</li></ul></div><div style="margin-bottom:10px"><strong style="color:#4CAF50">2013-08</strong> &nbsp;—&nbsp; <strong>2 bài</strong><ul style="padding-left:14px;font-size:12px;margin-top:4px"><li style="margin:2px 0;color:#555">Phục chế thêm một bộ biên chung</li><li style="margin:2px 0;color:#555">Những tư liệu, hình ảnh quý về vua Duy Tân</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 5 — BEST PRACTICES
+═══════════════════════════════════════════════════ -->
+<section id="bestpractice" class="section">
+  <div class="section-title">5. Best Practices — Bài học từ Đối thủ</div>
+  <div class="section-sub">Top bài viết nổi bật theo điểm đến và các yếu tố tạo nên sức hút truyền thông</div>
+
+  <div class="dest-tabs">
+    <button class="dest-tab active" data-color="pnkb" onclick="switchDest('bp','pnkb',this)">🔵 Phong Nha Kẻ Bàng</button>
+    <button class="dest-tab" data-color="bana" onclick="switchDest('bp','bana',this)">🟠 Ba Na Hills</button>
+    <button class="dest-tab" data-color="hue"  onclick="switchDest('bp','hue',this)">🟢 Cố đô Huế</button>
+  </div>
+
+  <div id="bp-pnkb" class="dest-panel active">
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title"><span class="icon">🏅</span> Top 5 bài viết nội dung phong phú nhất — Phong Nha Kẻ Bàng</div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Tiêu đề bài viết</th><th>Loại nội dung</th><th>Nguồn</th><th>Ngày đăng</th><th>Độ dài</th></tr></thead>
+          <tbody>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Những địa điểm du lịch lý tưởng - Bài 6: Quảng Bình</td>
+            <td><span class="badge" style="background:#2196F3">Sự kiện / Lễ hội</span></td>
+            <td>Thương hiệu & Công luận</td>
+            <td>13/05/2024</td>
+            <td>17,384</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Hang Sơn Đoòng</td>
+            <td><span class="badge" style="background:#2196F3">Sự kiện / Lễ hội</span></td>
+            <td>VietnamPlus</td>
+            <td>12/01/2019</td>
+            <td>12,943</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Khám phá 7 điểm đến tốt nhất cho du lịch mạo hiểm ở Việt Nam</td>
+            <td><span class="badge" style="background:#2196F3">Sự kiện / Lễ hội</span></td>
+            <td>VietnamPlus</td>
+            <td>14/04/2025</td>
+            <td>12,655</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Tour khám phá du lịch mạo hiểm hang Sơn Đoòng hút khách</td>
+            <td><span class="badge" style="background:#2196F3">Sự kiện / Lễ hội</span></td>
+            <td>VietnamPlus</td>
+            <td>13/12/2025</td>
+            <td>9,535</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Khám phá động thực vật quý hiếm ở Phong Nha - Kẻ Bàng</td>
+            <td><span class="badge" style="background:#2196F3">Di sản / Văn hóa</span></td>
+            <td>Tuổi Trẻ</td>
+            <td>06/09/2005</td>
+            <td>9,337</td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="insight-box">
+      <strong>💡 Đặc điểm top 5 bài — Phong Nha Kẻ Bàng (từ dữ liệu)</strong>
+      Độ dài TB của top 5 bài dài nhất: <strong>12,370 ký tự</strong> — gấp <strong>4.7x</strong> so với TB toàn bộ (2,646 ký tự).
+      Loại nội dung chiếm ưu thế trong top 5: <strong>Sự kiện / Lễ hội</strong>.
+      Từ khóa xuất hiện nhiều nhất: <strong>hang động, vườn quốc, quốc gia</strong>.
+      Nguồn báo chứa bài dài nhất: <strong>Thương hiệu & Công luận</strong>.
+    </div>
+  </div>
+  <div id="bp-bana" class="dest-panel">
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title"><span class="icon">🏅</span> Top 5 bài viết nội dung phong phú nhất — Ba Na Hills</div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Tiêu đề bài viết</th><th>Loại nội dung</th><th>Nguồn</th><th>Ngày đăng</th><th>Độ dài</th></tr></thead>
+          <tbody>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Bật mí về hầm rượu độc đáo tại Bà Nà Hills</td>
+            <td><span class="badge" style="background:#FF5722">Di sản / Văn hóa</span></td>
+            <td>Lao Động</td>
+            <td>07/09/2022</td>
+            <td>44,891</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">“Sun World Ba Na Hills nâng tầm thương hiệu cho Du lịch Đà Nẵng"</td>
+            <td><span class="badge" style="background:#FF5722">Sự kiện / Lễ hội</span></td>
+            <td>Lao Động</td>
+            <td>08/02/2021</td>
+            <td>30,761</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Lạng Sơn đẩy mạnh phát triển kinh tế - xã hội, khai thác hiệu quả ...</td>
+            <td><span class="badge" style="background:#FF5722">Sự kiện / Lễ hội</span></td>
+            <td>Thương hiệu & Công luận</td>
+            <td>22/03/2024</td>
+            <td>29,653</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Ba Na Hills dành ưu đãi lớn cho người dân Đà Nẵng</td>
+            <td><span class="badge" style="background:#FF5722">Sự kiện / Lễ hội</span></td>
+            <td>Lao Động</td>
+            <td>03/07/2025</td>
+            <td>27,460</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Lạc lối giữa chợ ẩm thực châu Âu, xứ sở hoa hồng như cổ tích ở Bà Nà</td>
+            <td><span class="badge" style="background:#FF5722">Sự kiện / Lễ hội</span></td>
+            <td>Lao Động</td>
+            <td>02/06/2025</td>
+            <td>25,726</td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="insight-box orange">
+      <strong>💡 Đặc điểm top 5 bài — Ba Na Hills (từ dữ liệu)</strong>
+      Độ dài TB của top 5 bài dài nhất: <strong>31,698 ký tự</strong> — gấp <strong>5.5x</strong> so với TB toàn bộ (5,758 ký tự).
+      Loại nội dung chiếm ưu thế trong top 5: <strong>Sự kiện / Lễ hội</strong>.
+      Từ khóa xuất hiện nhiều nhất trong tiêu đề: <strong>đà nẵng, lễ hội, ưu đãi</strong>.
+      Nguồn báo đưa tin nhiều nhất: <strong>VnExpress</strong> (79 bài).
+    </div>
+  </div>
+  <div id="bp-hue" class="dest-panel">
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title"><span class="icon">🏅</span> Top 5 bài viết nội dung phong phú nhất — Cố đô Huế</div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Tiêu đề bài viết</th><th>Loại nội dung</th><th>Nguồn</th><th>Ngày đăng</th><th>Độ dài</th></tr></thead>
+          <tbody>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Quân và dân một lòng, Cố đô Huế vực dậy sau trận lũ lịch sử</td>
+            <td><span class="badge" style="background:#4CAF50">Di sản / Văn hóa</span></td>
+            <td>Lao Động</td>
+            <td>17/11/2025</td>
+            <td>69,139</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Tiếng nói khai mở dân trí và phản biện từ cố đô Huế</td>
+            <td><span class="badge" style="background:#4CAF50">Di sản / Văn hóa</span></td>
+            <td>Lao Động</td>
+            <td>22/06/2025</td>
+            <td>41,148</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Thiệt hại nghiêm trọng tại Quần thể Di tích Cố đô Huế sau mưa lũ</td>
+            <td><span class="badge" style="background:#4CAF50">Di sản / Văn hóa</span></td>
+            <td>Lao Động</td>
+            <td>08/11/2025</td>
+            <td>29,010</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Trải nghiệm Hoàng cung Huế xưa với công nghệ thực tế ảo</td>
+            <td><span class="badge" style="background:#4CAF50">Sự kiện / Lễ hội</span></td>
+            <td>Lao Động</td>
+            <td>01/02/2025</td>
+            <td>28,976</td>
+        </tr>
+        <tr>
+            <td style="max-width:340px;font-weight:500">Lý giải việc Lầu Ngũ Phụng ở Huế nhanh xuống cấp, bạc màu</td>
+            <td><span class="badge" style="background:#4CAF50">Di sản / Văn hóa</span></td>
+            <td>Lao Động</td>
+            <td>25/05/2025</td>
+            <td>28,874</td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="insight-box green">
+      <strong>💡 Đặc điểm top 5 bài — Cố đô Huế (từ dữ liệu)</strong>
+      Độ dài TB của top 5 bài dài nhất: <strong>39,429 ký tự</strong> — gấp <strong>12.4x</strong> so với TB toàn bộ (3,173 ký tự).
+      Loại nội dung chiếm ưu thế trong top 5: <strong>Di sản / Văn hóa</strong>.
+      Từ khóa xuất hiện nhiều nhất trong tiêu đề: <strong>di tích, triều nguyễn, di sản</strong>.
+      Nguồn báo đưa tin nhiều nhất: <strong>Thanh Niên</strong> (307 bài).
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 6 — CHẨN ĐOÁN & KẾT LUẬN
+═══════════════════════════════════════════════════ -->
+<section id="diagnosis" class="section">
+  <div class="section-title">6. Chẩn đoán Vị thế & Định hướng Chiến lược</div>
+  <div class="section-sub">Tổng hợp phân tích EDA để đưa ra chẩn đoán toàn diện và khuyến nghị chiến lược truyền thông cho Phong Nha – Kẻ Bàng</div>
+
+  <!-- Summary KPIs -->
+  <div class="grid-3" style="margin-bottom:24px">
+    <div class="card" style="border-top:4px solid var(--pnkb)">
+      <div class="card-title" style="color:var(--pnkb)">🔵 Phong Nha – Kẻ Bàng</div>
+      <div style="font-size:13px;color:var(--sub);line-height:2">
+        <div>📰 <strong>385</strong> bài viết (36.6%)</div>
+        <div>📡 <strong>39</strong> nguồn báo</div>
+        <div>📝 TB <strong>2,646</strong> ký tự/bài</div>
+        <div>⚡ <strong>3.5</strong> bài/tháng</div>
+        <div>📈 YoY: <strong style="color:#F44336">-82.7%</strong></div>
+      </div>
+    </div>
+    <div class="card" style="border-top:4px solid var(--bana)">
+      <div class="card-title" style="color:var(--bana)">🟠 Ba Na Hills</div>
+      <div style="font-size:13px;color:var(--sub);line-height:2">
+        <div>📰 <strong>185</strong> bài viết (17.6%)</div>
+        <div>📡 <strong>6</strong> nguồn báo</div>
+        <div>📝 TB <strong>5,758</strong> ký tự/bài</div>
+        <div>⚡ <strong>2.2</strong> bài/tháng</div>
+        <div>📈 YoY: <strong style="color:#F44336">-71.9%</strong></div>
+      </div>
+    </div>
+    <div class="card" style="border-top:4px solid var(--hue)">
+      <div class="card-title" style="color:var(--hue)">🟢 Cố đô Huế</div>
+      <div style="font-size:13px;color:var(--sub);line-height:2">
+        <div>📰 <strong>483</strong> bài viết (45.9%)</div>
+        <div>📡 <strong>6</strong> nguồn báo</div>
+        <div>📝 TB <strong>3,173</strong> ký tự/bài</div>
+        <div>⚡ <strong>3.6</strong> bài/tháng</div>
+        <div>📈 YoY: <strong style="color:#F44336">-73.4%</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diagnosis -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title"><span class="icon">🔬</span> Chẩn đoán Vị thế Truyền thông Phong Nha – Kẻ Bàng</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+      <div style="padding:16px;background:#EFF6FF;border-radius:10px">
+        <div style="font-weight:700;color:var(--pnkb);margin-bottom:10px;font-size:15px">💪 Điểm mạnh</div>
+        <ul style="font-size:13.5px;line-height:2;padding-left:18px">
+          <li>Đa dạng nguồn báo: <strong>39 nguồn</strong> (Ba Na Hills: 6, Cố đô Huế: 6)</li>
+          <li>Loại nội dung chiếm ưu thế: <strong>Di sản / Văn hóa (43.4%)</strong></li>
+          <li>Từ khóa nổi bật nhất trong tiêu đề (đếm từ dữ liệu): <strong>hang động, vườn quốc, quốc gia</strong></li>
+          <li>Nguồn báo đưa tin nhiều nhất: <strong>Thanh Niên</strong> (67 bài)</li>
+          <li>Tần suất TB: <strong>3.5 bài/tháng</strong></li>
+        </ul>
+      </div>
+      <div style="padding:16px;background:#FEF2F2;border-radius:10px">
+        <div style="font-weight:700;color:#EF4444;margin-bottom:10px;font-size:15px">⚠️ Điểm yếu / Khoảng trống</div>
+        <ul style="font-size:13.5px;line-height:2;padding-left:18px">
+          <li>Ít hơn Cố đô Huế <strong>98 bài viết</strong></li>
+          <li>Độ dài bài thấp hơn Ba Na Hills <strong>3,112 ký tự</strong></li>
+          <li>Thiếu nội dung Quảng bá/Marketing chủ động (&lt;2%)</li>
+          <li>Chưa có chiến lược event-driven PR rõ ràng</li>
+          <li>Tần suất thấp: 3.5 vs 3.6 bài/tháng (Huế)</li>
+        </ul>
+      </div>
+      <div style="padding:16px;background:#F0FDF4;border-radius:10px">
+        <div style="font-weight:700;color:var(--hue);margin-bottom:10px;font-size:15px">🚀 Cơ hội</div>
+        <ul style="font-size:13.5px;line-height:2;padding-left:18px">
+          <li>Tăng bài về <em>Thiên nhiên / Sinh thái</em>: PNKB hiện <strong>27.0%</strong> — đối thủ cao nhất là Phong Nha Kẻ Bàng (27.0%)</li>
+          <li>Tăng Quảng bá/Marketing từ <strong>1.8%</strong> lên ngang bằng mức cao nhất trong dataset (2.7%)</li>
+          <li>Khai thác tháng cao điểm xác định từ dữ liệu: <strong>T2, T6, T7</strong></li>
+          <li>Mở rộng nguồn báo: hiện 39 nguồn — đối thủ dẫn đầu có 39 nguồn (còn 0 nguồn chưa khai thác)</li>
+          <li>Tăng độ dài bài: TB hiện <strong>2,646 ký tự</strong> — Ba Na Hills đạt 5,758 ký tự/bài</li>
+        </ul>
+      </div>
+      <div style="padding:16px;background:#FFFBEB;border-radius:10px">
+        <div style="font-weight:700;color:#F59E0B;margin-bottom:10px;font-size:15px">📋 Khuyến nghị ưu tiên</div>
+        <ol style="font-size:13.5px;line-height:2;padding-left:18px">
+          <li><strong>Tăng tần suất</strong>: Hiện 3.5 bài/tháng → benchmark cao nhất trong dataset: <strong>3.6 bài/tháng</strong> (Cố đô Huế)</li>
+          <li><strong>Tăng độ dài bài</strong>: Từ 2,646 → mục tiêu <strong>4,200 ký tự</strong> (trung bình PNKB và Ba Na Hills — benchmark từ dữ liệu)</li>
+          <li><strong>Tăng Quảng bá/Marketing</strong>: Từ 1.8% → mục tiêu <strong>2.7%</strong> (mức cao nhất trong dataset)</li>
+          <li><strong>Tập trung tháng cao điểm</strong>: Chiến dịch vào <strong>T2, T6, T7</strong> (3 tháng có nhiều bài nhất trong lịch sử dữ liệu)</li>
+          <li><strong>Mở rộng nguồn báo</strong>: Từ 39 → <strong>39 nguồn</strong> (benchmark cao nhất trong dataset)</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📊</span> Gap Analysis — Phong Nha KB vs Đối thủ tốt nhất (chuẩn hóa %)</div>
+    <canvas id="chartGap" style="max-height:300px"></canvas>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<div class="footer">
+  Dashboard tự động sinh từ DataMerge.csv &nbsp;|&nbsp; Tổng 1,053 bài viết &nbsp;|&nbsp; Phong Nha – Kẻ Bàng EDA Report &nbsp;|&nbsp; 06/03/2026
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════ -->
+<script>
+// ── Tab navigation ──────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Destination sub-tabs ─────────────────────────────────────────────
+function switchDest(prefix, id, btn) {
+  const parent = btn.closest('section') || document;
+  parent.querySelectorAll('.dest-panel').forEach(p => p.classList.remove('active'));
+  parent.querySelectorAll('.dest-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(prefix + '-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Chart defaults ───────────────────────────────────────────────────
+Chart.defaults.font.family = "'Segoe UI', Arial, sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.padding = 14;
+
+const gridStyle = {
+  color: 'rgba(0,0,0,.06)',
+  drawBorder: false
+};
+
+// ── Helper ───────────────────────────────────────────────────────────
+function baseLineOpts(yLabel='') {
+  return {
+    responsive: true,
+    maintainAspectRatio: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: { backgroundColor: 'rgba(26,26,46,.92)', titleFont: { weight: 'bold' }, padding: 12 }
+    },
+    scales: {
+      x: { grid: gridStyle, ticks: { maxTicksLimit: 12, maxRotation: 45 } },
+      y: { grid: gridStyle, beginAtZero: true, title: { display: !!yLabel, text: yLabel } }
+    }
+  };
+}
+
+function baseBarOpts(yLabel='') {
+  return {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: { backgroundColor: 'rgba(26,26,46,.92)', padding: 12 }
+    },
+    scales: {
+      x: { grid: {...gridStyle, display:false} },
+      y: { grid: gridStyle, beginAtZero: true, title: { display: !!yLabel, text: yLabel } }
+    }
+  };
+}
+
+// ── 1. YEARLY TREND ─────────────────────────────────────────────────
+new Chart(document.getElementById('chartYearly'), {
+  type: 'line',
+  data: {"labels": ["2003", "2004", "2005", "2007", "2008", "2009", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025", "2026"], "datasets": [{"label": "Phong Nha Kẻ Bàng", "data": [1, 1, 1, 1, 2, 2, 1, 5, 6, 10, 16, 12, 11, 10, 27, 6, 6, 31, 22, 38, 150, 26], "borderColor": "#2196F3", "backgroundColor": "rgba(33,150,243,0.15)", "fill": true, "tension": 0.4, "pointRadius": 5, "pointHoverRadius": 8, "borderWidth": 2.5}, {"label": "Ba Na Hills", "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 14, 15, 10, 21, 14, 4, 14, 21, 29, 32, 9], "borderColor": "#FF5722", "backgroundColor": "rgba(255,87,34,0.15)", "fill": true, "tension": 0.4, "pointRadius": 5, "pointHoverRadius": 8, "borderWidth": 2.5}, {"label": "Cố đô Huế", "data": [0, 0, 0, 0, 0, 0, 1, 12, 19, 21, 13, 6, 23, 19, 26, 24, 21, 36, 49, 94, 94, 25], "borderColor": "#4CAF50", "backgroundColor": "rgba(76,175,80,0.15)", "fill": true, "tension": 0.4, "pointRadius": 5, "pointHoverRadius": 8, "borderWidth": 2.5}]},
+  options: baseLineOpts('Số bài viết')
+});
+
+// ── 2. MONTHLY TREND ────────────────────────────────────────────────
+new Chart(document.getElementById('chartMonthly'), {
+  type: 'line',
+  data: {"labels": ["2003-11", "2004-01", "2005-09", "2007-08", "2008-02", "2008-03", "2009-06", "2009-07", "2011-06", "2011-12", "2012-01", "2012-03", "2012-04", "2012-05", "2012-06", "2012-09", "2012-12", "2013-01", "2013-02", "2013-03", "2013-04", "2013-05", "2013-06", "2013-07", "2013-08", "2013-09", "2013-10", "2014-01", "2014-03", "2014-04", "2014-05", "2014-06", "2014-08", "2014-09", "2014-10", "2014-11", "2015-01", "2015-02", "2015-03", "2015-05", "2015-06", "2015-07", "2015-08", "2015-10", "2015-11", "2016-01", "2016-02", "2016-03", "2016-05", "2016-06", "2016-07", "2016-08", "2016-09", "2016-10", "2016-11", "2016-12", "2017-01", "2017-02", "2017-03", "2017-05", "2017-06", "2017-07", "2017-08", "2017-09", "2017-11", "2017-12", "2018-01", "2018-02", "2018-03", "2018-04", "2018-05", "2018-06", "2018-07", "2018-08", "2018-09", "2018-10", "2018-11", "2019-01", "2019-02", "2019-03", "2019-04", "2019-05", "2019-06", "2019-07", "2019-08", "2019-09", "2019-10", "2019-11", "2019-12", "2020-01", "2020-02", "2020-03", "2020-04", "2020-05", "2020-06", "2020-07", "2020-08", "2020-09", "2020-10", "2020-11", "2020-12", "2021-01", "2021-02", "2021-03", "2021-04", "2021-05", "2021-06", "2021-09", "2021-10", "2021-11", "2022-01", "2022-02", "2022-03", "2022-04", "2022-05", "2022-06", "2022-07", "2022-09", "2022-10", "2022-11", "2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-06", "2026-07", "2026-08", "2026-10", "2026-11"], "datasets": [{"label": "Phong Nha Kẻ Bàng", "data": [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0, 1, 3, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 2, 4, 3, 1, 3, 0, 2, 3, 1, 3, 0, 3, 3, 0, 2, 1, 1, 0, 1, 0, 1, 2, 1, 0, 1, 1, 2, 1, 2, 2, 1, 1, 0, 0, 1, 0, 4, 0, 2, 0, 2, 1, 0, 0, 3, 2, 5, 3, 2, 0, 1, 3, 3, 2, 2, 1, 0, 0, 0, 2, 1, 0, 0, 2, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 2, 1, 1, 1, 0, 3, 1, 0, 20, 0, 4, 1, 1, 0, 2, 0, 1, 2, 0, 5, 3, 2, 0, 1, 1, 5, 3, 0, 4, 7, 7, 3, 1, 1, 4, 1, 3, 4, 4, 12, 11, 12, 15, 10, 33, 7, 4, 18, 8, 16, 9, 16, 1, 0, 0, 0, 0, 0], "borderColor": "#2196F3", "backgroundColor": "rgba(33,150,243,0.15)", "fill": true, "tension": 0.3, "pointRadius": 2, "borderWidth": 2}, {"label": "Ba Na Hills", "data": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 3, 4, 0, 2, 1, 0, 1, 1, 0, 3, 1, 0, 0, 0, 1, 1, 0, 1, 3, 0, 1, 1, 3, 1, 1, 0, 1, 2, 8, 1, 2, 1, 1, 2, 0, 2, 1, 2, 0, 1, 0, 3, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 5, 0, 2, 1, 1, 0, 0, 1, 1, 2, 0, 1, 4, 1, 3, 3, 3, 1, 0, 2, 3, 2, 6, 3, 2, 2, 3, 3, 2, 0, 0, 3, 5, 3, 3, 1, 5, 2, 4, 5, 0, 2, 0, 2, 6, 2, 1, 0, 0, 0, 0, 0], "borderColor": "#FF5722", "backgroundColor": "rgba(255,87,34,0.15)", "fill": true, "tension": 0.3, "pointRadius": 2, "borderWidth": 2}, {"label": "Cố đô Huế", "data": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 4, 0, 0, 1, 2, 3, 2, 2, 2, 3, 5, 2, 1, 1, 2, 1, 0, 3, 2, 4, 2, 2, 2, 1, 3, 2, 1, 5, 2, 2, 0, 0, 2, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 2, 1, 0, 1, 2, 6, 0, 5, 3, 4, 0, 1, 1, 2, 1, 1, 4, 4, 1, 0, 1, 4, 1, 0, 1, 0, 3, 3, 1, 1, 4, 3, 4, 3, 1, 2, 4, 2, 0, 4, 1, 2, 3, 0, 6, 1, 0, 1, 3, 3, 3, 1, 4, 1, 2, 3, 1, 2, 2, 6, 6, 3, 8, 3, 0, 0, 2, 4, 5, 1, 1, 6, 4, 6, 7, 3, 1, 6, 6, 3, 12, 7, 5, 8, 7, 9, 4, 10, 8, 11, 6, 7, 7, 5, 6, 11, 15, 5, 8, 11, 2, 9, 10, 5, 9, 8, 3, 1, 1, 1, 1, 1], "borderColor": "#4CAF50", "backgroundColor": "rgba(76,175,80,0.15)", "fill": true, "tension": 0.3, "pointRadius": 2, "borderWidth": 2}]},
+  options: {
+    ...baseLineOpts('Số bài viết'),
+    scales: {
+      x: { grid: gridStyle, ticks: { maxTicksLimit: 24, maxRotation: 60, font: {size:10} } },
+      y: { grid: gridStyle, beginAtZero: true }
+    }
+  }
+});
+
+// ── 3. SEASONALITY ──────────────────────────────────────────────────
+new Chart(document.getElementById('chartSeasonality'), {
+  type: 'line',
+  data: {"labels": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"], "datasets": [{"label": "Phong Nha Kẻ Bàng", "data": [7.5, 9.4, 7.8, 9.1, 9.1, 11.9, 11.2, 6.2, 5.7, 8.1, 6.8, 7.3], "borderColor": "#2196F3", "backgroundColor": "rgba(33,150,243,0.15)", "fill": false, "tension": 0.4, "pointRadius": 5, "borderWidth": 2.5}, {"label": "Ba Na Hills", "data": [9.7, 11.9, 11.9, 8.1, 10.3, 5.4, 9.7, 8.6, 5.4, 7.0, 4.9, 7.0], "borderColor": "#FF5722", "backgroundColor": "rgba(255,87,34,0.15)", "fill": false, "tension": 0.4, "pointRadius": 5, "borderWidth": 2.5}, {"label": "Cố đô Huế", "data": [11.8, 7.9, 8.5, 10.8, 9.5, 9.3, 7.2, 8.3, 6.6, 8.5, 6.4, 5.2], "borderColor": "#4CAF50", "backgroundColor": "rgba(76,175,80,0.15)", "fill": false, "tension": 0.4, "pointRadius": 5, "borderWidth": 2.5}]},
+  options: baseLineOpts('% bài viết')
+});
+
+// ── 4. DAY OF WEEK ───────────────────────────────────────────────────
+new Chart(document.getElementById('chartDow'), {
+  type: 'line',
+  data: {"labels": ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"], "datasets": [{"label": "Phong Nha Kẻ Bàng", "data": [10.4, 15.8, 22.3, 13.0, 14.0, 9.6, 14.8], "borderColor": "#2196F3", "backgroundColor": "rgba(33,150,243,0.15)", "fill": false, "tension": 0.4, "pointRadius": 4, "borderWidth": 2}, {"label": "Ba Na Hills", "data": [13.5, 15.1, 16.2, 16.2, 18.9, 13.0, 7.0], "borderColor": "#FF5722", "backgroundColor": "rgba(255,87,34,0.15)", "fill": false, "tension": 0.4, "pointRadius": 4, "borderWidth": 2}, {"label": "Cố đô Huế", "data": [19.0, 12.0, 15.1, 12.0, 15.3, 13.5, 13.0], "borderColor": "#4CAF50", "backgroundColor": "rgba(76,175,80,0.15)", "fill": false, "tension": 0.4, "pointRadius": 4, "borderWidth": 2}]},
+  options: baseLineOpts('% bài viết')
+});
+
+// ── 5. SOV PIE ──────────────────────────────────────────────────────
+new Chart(document.getElementById('chartSov'), {
+  type: 'doughnut',
+  data: {"labels": ["Cố đô Huế", "Phong Nha Kẻ Bàng", "Ba Na Hills"], "datasets": [{"data": [483, 385, 185], "backgroundColor": ["#4CAF50", "#2196F3", "#FF5722"], "hoverOffset": 10, "borderWidth": 2, "borderColor": "#fff"}]},
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: {
+        backgroundColor: 'rgba(26,26,46,.92)', padding: 12,
+        callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} bài (${(ctx.parsed/ctx.chart.getDatasetMeta(0).total*100).toFixed(1)}%)` }
+      }
+    },
+    cutout: '58%'
+  }
+});
+
+// ── 6. RADAR ────────────────────────────────────────────────────────
+new Chart(document.getElementById('chartRadar'), {
+  type: 'radar',
+  data: {"labels": ["Tổng bài viết", "Độ dài TB", "Đa dạng nguồn", "Tần suất/tháng", "Tổng bài viết"], "datasets": [{"label": "Phong Nha Kẻ Bàng", "data": [0.7971014492753623, 0.45953456061132336, 1.0, 0.9722222222222222, 0.7971014492753623], "backgroundColor": "rgba(33,150,243,0.15)", "borderColor": "#2196F3", "pointBackgroundColor": "#2196F3", "borderWidth": 2.5}, {"label": "Ba Na Hills", "data": [0.3830227743271222, 1.0, 0.15384615384615385, 0.6111111111111112, 0.3830227743271222], "backgroundColor": "rgba(255,87,34,0.15)", "borderColor": "#FF5722", "pointBackgroundColor": "#FF5722", "borderWidth": 2.5}, {"label": "Cố đô Huế", "data": [1.0, 0.5510593956234804, 0.15384615384615385, 1.0, 1.0], "backgroundColor": "rgba(76,175,80,0.15)", "borderColor": "#4CAF50", "pointBackgroundColor": "#4CAF50", "borderWidth": 2.5}]},
+  options: {
+    responsive: true,
+    scales: { r: { min: 0, max: 1, ticks: { stepSize: 0.25, font: {size:10} }, pointLabels: { font: {size:11, weight:'bold'} } } },
+    plugins: { legend: { position: 'bottom' } }
+  }
+});
+
+// ── 7. SOURCE DIVERSITY ─────────────────────────────────────────────
+new Chart(document.getElementById('chartSrcDiv'), {
+  type: 'bar',
+  data: {"labels": ["Phong Nha Kẻ Bàng", "Ba Na Hills", "Cố đô Huế"], "datasets": [{"label": "Số nguồn", "data": [39.0, 6.0, 6.0], "backgroundColor": ["#2196F3", "#FF5722", "#4CAF50"], "borderRadius": 8, "borderWidth": 0}]},
+  options: baseBarOpts('Số nguồn báo')
+});
+
+// ── 8. AVG LENGTH ───────────────────────────────────────────────────
+new Chart(document.getElementById('chartAvgLen'), {
+  type: 'bar',
+  data: {"labels": ["Phong Nha Kẻ Bàng", "Ba Na Hills", "Cố đô Huế"], "datasets": [{"label": "Ký tự TB", "data": [2646.0, 5758.0, 3173.0], "backgroundColor": ["#2196F3", "#FF5722", "#4CAF50"], "borderRadius": 8, "borderWidth": 0}]},
+  options: baseBarOpts('Số ký tự')
+});
+
+// ── 9. FREQUENCY ────────────────────────────────────────────────────
+new Chart(document.getElementById('chartFreq'), {
+  type: 'bar',
+  data: {"labels": ["Phong Nha Kẻ Bàng", "Ba Na Hills", "Cố đô Huế"], "datasets": [{"label": "Bài/tháng", "data": [3.5, 2.2, 3.6], "backgroundColor": ["#2196F3", "#FF5722", "#4CAF50"], "borderRadius": 8, "borderWidth": 0}]},
+  options: baseBarOpts('Bài / tháng')
+});
+
+// ── 10. SOURCE COMPARISON ───────────────────────────────────────────
+new Chart(document.getElementById('chartSrc'), {
+  type: 'bar',
+  data: {"labels": ["Thanh Niên", "Thương hiệu & Công luận", "VnExpress", "VTV", "Lao Động", "Nhân Dân", "Tuổi Trẻ", "Báo Quảng Bình"], "datasets": [{"label": "Phong Nha Kẻ Bàng", "data": [67, 61, 17, 42, 27, 33, 61, 21], "backgroundColor": "#2196F3", "borderRadius": 5}, {"label": "Ba Na Hills", "data": [9, 59, 79, 6, 22, 10, 0, 0], "backgroundColor": "#FF5722", "borderRadius": 5}, {"label": "Cố đô Huế", "data": [307, 69, 16, 50, 23, 18, 0, 0], "backgroundColor": "#4CAF50", "borderRadius": 5}]},
+  options: {
+    ...baseBarOpts('Số bài viết'),
+    indexAxis: 'y',
+    scales: {
+      x: { grid: gridStyle, beginAtZero: true },
+      y: { grid: {...gridStyle, display:false} }
+    }
+  }
+});
+
+// ── 11. CONTENT MIX ─────────────────────────────────────────────────
+new Chart(document.getElementById('chartCtMix'), {
+  type: 'bar',
+  data: {"labels": ["Di sản / Văn hóa", "Quảng bá / Marketing", "Sự kiện / Lễ hội", "Thiên nhiên / Sinh thái", "Tin tức chung", "Trải nghiệm / Review"], "datasets": [{"label": "Phong Nha Kẻ Bàng", "data": [43.4, 1.8, 19.0, 27.0, 6.5, 2.3], "backgroundColor": "#2196F3", "borderRadius": 5}, {"label": "Ba Na Hills", "data": [8.6, 2.7, 71.9, 11.4, 2.2, 3.2], "backgroundColor": "#FF5722", "borderRadius": 5}, {"label": "Cố đô Huế", "data": [53.8, 0.4, 28.8, 5.6, 7.9, 3.5], "backgroundColor": "#4CAF50", "borderRadius": 5}]},
+  options: {
+    ...baseBarOpts('%'),
+    plugins: { legend: { position:'top' }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` } } }
+  }
+});
+
+// ── 12. KEYWORD CHARTS ──────────────────────────────────────────────
+new Chart(document.getElementById('chartKwPnkb'), {
+  type: 'bar',
+  data: {"labels": ["hang động", "vườn quốc", "quốc gia", "di sản", "khám phá", "lớn nhất", "phát hiện", "thám hiểm", "mạo hiểm", "động lớn", "chinh phục", "xây dựng"], "datasets": [{"label": "Tần suất", "data": [39, 32, 31, 20, 20, 13, 12, 11, 11, 11, 11, 9], "backgroundColor": "#2196F3", "borderRadius": 5, "borderWidth": 0}]},
+  options: { ...baseBarOpts('Tần suất'), indexAxis:'y',
+    scales: { x: { grid:gridStyle,beginAtZero:true }, y:{ grid:{...gridStyle,display:false} } } }
+});
+new Chart(document.getElementById('chartKwBana'), {
+  type: 'bar',
+  data: {"labels": ["đà nẵng", "lễ hội", "ưu đãi", "trải nghiệm", "ẩm thực", "hội bia", "cáp treo", "hội hoa", "show diễn", "giá vé", "miền trung", "vinh danh"], "datasets": [{"label": "Tần suất", "data": [32, 21, 13, 11, 7, 5, 5, 5, 5, 5, 5, 4], "backgroundColor": "#FF5722", "borderRadius": 5, "borderWidth": 0}]},
+  options: { ...baseBarOpts('Tần suất'), indexAxis:'y',
+    scales: { x: { grid:gridStyle,beginAtZero:true }, y:{ grid:{...gridStyle,display:false} } } }
+});
+new Chart(document.getElementById('chartKwHue'), {
+  type: 'bar',
+  data: {"labels": ["di tích", "triều nguyễn", "di sản", "thừa thiên", "bảo tồn", "mở cửa", "đại nội", "áo dài", "vua tự", "tự đức", "phi tần", "phục hồi"], "datasets": [{"label": "Tần suất", "data": [66, 39, 33, 17, 16, 16, 14, 13, 13, 13, 13, 12], "backgroundColor": "#4CAF50", "borderRadius": 5, "borderWidth": 0}]},
+  options: { ...baseBarOpts('Tần suất'), indexAxis:'y',
+    scales: { x: { grid:gridStyle,beginAtZero:true }, y:{ grid:{...gridStyle,display:false} } } }
+});
+
+// ── 13. CONTENT TYPE per destination ───────────────────────────────
+function ctData(dest, color) {
+  const d = {"Di sản / Văn hóa": {"Ba Na Hills": 8.6, "Cố đô Huế": 53.8, "Phong Nha Kẻ Bàng": 43.4}, "Quảng bá / Marketing": {"Ba Na Hills": 2.7, "Cố đô Huế": 0.4, "Phong Nha Kẻ Bàng": 1.8}, "Sự kiện / Lễ hội": {"Ba Na Hills": 71.9, "Cố đô Huế": 28.8, "Phong Nha Kẻ Bàng": 19.0}, "Thiên nhiên / Sinh thái": {"Ba Na Hills": 11.4, "Cố đô Huế": 5.6, "Phong Nha Kẻ Bàng": 27.0}, "Tin tức chung": {"Ba Na Hills": 2.2, "Cố đô Huế": 7.9, "Phong Nha Kẻ Bàng": 6.5}, "Trải nghiệm / Review": {"Ba Na Hills": 3.2, "Cố đô Huế": 3.5, "Phong Nha Kẻ Bàng": 2.3}};
+  const cats = Object.keys(d);
+  const vals = cats.map(c => d[c][dest] || 0);
+  return {
+    labels: cats,
+    datasets: [{ label: dest, data: vals, backgroundColor: color, borderRadius:5 }]
+  };
+}
+new Chart(document.getElementById('chartCtPnkb'), { type:'bar', data: ctData('Phong Nha Kẻ Bàng','#2196F3'), options: baseBarOpts('%') });
+new Chart(document.getElementById('chartCtBana'), { type:'bar', data: ctData('Ba Na Hills','#FF5722'), options: baseBarOpts('%') });
+new Chart(document.getElementById('chartCtHue'),  { type:'bar', data: ctData('Cố đô Huế','#4CAF50'), options: baseBarOpts('%') });
+
+// ── 14. SPIKE CHARTS ────────────────────────────────────────────────
+new Chart(document.getElementById('chartSpikePnkb'), {
+  type: 'line', data: {"labels": ["2003-11", "2004-01", "2005-09", "2007-08", "2008-02", "2008-03", "2009-06", "2009-07", "2011-12", "2012-01", "2012-03", "2012-04", "2012-05", "2013-04", "2013-05", "2013-07", "2013-10", "2014-04", "2014-09", "2014-10", "2014-11", "2015-01", "2015-02", "2015-05", "2015-06", "2015-07", "2015-08", "2015-11", "2016-01", "2016-03", "2016-05", "2016-06", "2016-08", "2016-10", "2016-11", "2016-12", "2017-02", "2017-03", "2017-05", "2017-06", "2017-07", "2017-08", "2017-09", "2017-11", "2018-02", "2018-04", "2018-06", "2018-08", "2018-09", "2019-01", "2019-02", "2019-03", "2019-04", "2019-05", "2019-07", "2019-08", "2019-09", "2019-10", "2019-11", "2019-12", "2020-04", "2020-05", "2020-08", "2020-10", "2021-01", "2021-04", "2021-09", "2021-10", "2021-11", "2022-01", "2022-03", "2022-04", "2022-06", "2022-09", "2022-10", "2022-11", "2023-01", "2023-03", "2023-04", "2023-06", "2023-07", "2023-08", "2023-10", "2023-11", "2023-12", "2024-01", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03"], "datasets": [{"label": "Phong Nha Kẻ Bàng", "data": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 2, 4, 3, 1, 3, 2, 3, 1, 3, 3, 3, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 4, 2, 2, 1, 3, 2, 5, 3, 2, 1, 3, 3, 2, 2, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 3, 1, 20, 4, 1, 1, 2, 1, 2, 5, 3, 2, 1, 1, 5, 3, 4, 7, 7, 3, 1, 1, 4, 1, 3, 4, 4, 12, 11, 12, 15, 10, 33, 7, 4, 18, 8, 16, 9, 16, 1], "borderColor": "#2196F3", "backgroundColor": "rgba(33,150,243,0.15)", "fill": true, "tension": 0.3, "pointRadius": 3, "borderWidth": 2}]},
+  options: baseLineOpts('Số bài/tháng')
+});
+new Chart(document.getElementById('chartSpikeBana'), {
+  type: 'line', data: {"labels": ["2014-04", "2016-02", "2016-03", "2016-05", "2016-06", "2016-07", "2016-08", "2016-09", "2016-10", "2016-11", "2016-12", "2017-01", "2017-02", "2017-03", "2017-05", "2017-07", "2017-08", "2017-11", "2017-12", "2018-02", "2018-03", "2018-07", "2018-08", "2018-10", "2018-11", "2019-02", "2019-03", "2019-04", "2019-05", "2019-06", "2019-08", "2019-09", "2019-10", "2019-11", "2019-12", "2020-01", "2020-02", "2020-03", "2020-05", "2020-06", "2020-07", "2020-09", "2020-11", "2020-12", "2021-02", "2022-02", "2022-03", "2022-04", "2022-06", "2022-07", "2022-09", "2022-12", "2023-01", "2023-02", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-10", "2025-12", "2026-01", "2026-02", "2026-03"], "datasets": [{"label": "Ba Na Hills", "data": [2, 2, 2, 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 3, 4, 2, 1, 1, 1, 3, 1, 1, 1, 1, 3, 1, 1, 3, 1, 1, 1, 2, 8, 1, 2, 1, 1, 2, 2, 1, 2, 1, 3, 1, 4, 1, 3, 5, 2, 1, 1, 1, 1, 2, 1, 4, 1, 3, 3, 3, 1, 2, 3, 2, 6, 3, 2, 2, 3, 3, 2, 3, 5, 3, 3, 1, 5, 2, 4, 5, 2, 2, 6, 2, 1], "borderColor": "#FF5722", "backgroundColor": "rgba(255,87,34,0.15)", "fill": true, "tension": 0.3, "pointRadius": 3, "borderWidth": 2}]},
+  options: baseLineOpts('Số bài/tháng')
+});
+new Chart(document.getElementById('chartSpikeHue'), {
+  type: 'line', data: {"labels": ["2011-06", "2012-01", "2012-05", "2012-06", "2012-09", "2012-12", "2013-01", "2013-02", "2013-03", "2013-04", "2013-05", "2013-06", "2013-07", "2013-08", "2013-09", "2014-01", "2014-03", "2014-04", "2014-05", "2014-06", "2014-08", "2014-09", "2014-10", "2014-11", "2015-01", "2015-02", "2015-03", "2015-05", "2015-08", "2015-10", "2016-01", "2016-07", "2016-08", "2016-10", "2016-11", "2017-01", "2017-02", "2017-03", "2017-06", "2017-07", "2017-08", "2017-11", "2017-12", "2018-01", "2018-02", "2018-03", "2018-04", "2018-05", "2018-06", "2018-08", "2018-09", "2018-10", "2019-01", "2019-03", "2019-04", "2019-05", "2019-06", "2019-07", "2019-08", "2019-09", "2019-10", "2019-11", "2019-12", "2020-01", "2020-02", "2020-04", "2020-05", "2020-06", "2020-07", "2020-09", "2020-10", "2020-12", "2021-01", "2021-02", "2021-03", "2021-04", "2021-05", "2021-06", "2021-09", "2021-10", "2021-11", "2022-01", "2022-02", "2022-03", "2022-04", "2022-05", "2022-06", "2022-07", "2022-11", "2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-06", "2026-07", "2026-08", "2026-10", "2026-11"], "datasets": [{"label": "Cố đô Huế", "data": [1, 4, 1, 2, 3, 2, 2, 2, 3, 5, 2, 1, 1, 2, 1, 3, 2, 4, 2, 2, 2, 1, 3, 2, 1, 5, 2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 2, 6, 5, 3, 4, 1, 1, 2, 1, 1, 4, 4, 1, 1, 4, 1, 1, 3, 3, 1, 1, 4, 3, 4, 3, 1, 2, 4, 2, 4, 1, 2, 3, 6, 1, 1, 3, 3, 3, 1, 4, 1, 2, 3, 1, 2, 2, 6, 6, 3, 8, 3, 2, 4, 5, 1, 1, 6, 4, 6, 7, 3, 1, 6, 6, 3, 12, 7, 5, 8, 7, 9, 4, 10, 8, 11, 6, 7, 7, 5, 6, 11, 15, 5, 8, 11, 2, 9, 10, 5, 9, 8, 3, 1, 1, 1, 1, 1], "borderColor": "#4CAF50", "backgroundColor": "rgba(76,175,80,0.15)", "fill": true, "tension": 0.3, "pointRadius": 3, "borderWidth": 2}]},
+  options: baseLineOpts('Số bài/tháng')
+});
+
+// ── 15. GAP ANALYSIS ────────────────────────────────────────────────
+const gapMetrics = ['Tổng bài viết', 'Độ dài TB nội dung', 'Đa dạng nguồn báo', 'Bài / tháng'];
+const gapPnkb  = [0.7971014492753623, 0.45953456061132336, 1.0, 0.9722222222222222].map(v => (v*100).toFixed(1)*1);
+const gapBest  = [100, 100, 100, 100];
+new Chart(document.getElementById('chartGap'), {
+  type: 'bar',
+  data: {
+    labels: gapMetrics,
+    datasets: [
+      { label: 'Phong Nha KB (%)', data: gapPnkb, backgroundColor: 'rgba(33,150,243,.75)', borderRadius:6 },
+      { label: 'Đối thủ tốt nhất (100%)', data: gapBest, backgroundColor: 'rgba(239,68,68,.2)', borderRadius:6, borderWidth:2, borderColor:'rgba(239,68,68,.6)' }
+    ]
+  },
+  options: {
+    ...baseBarOpts('% so với mức tốt nhất'),
+    plugins: {
+      legend: { position:'top' },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%` } }
+    },
+    scales: {
+      x: { grid:{...gridStyle,display:false} },
+      y: { grid:gridStyle, beginAtZero:true, max:110, title:{display:true,text:'%'} }
+    }
+  }
+});
+
+console.log('✅ Dashboard loaded successfully');
+</script>
+</body>
+</html>
