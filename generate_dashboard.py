@@ -514,6 +514,7 @@ html = f"""<!DOCTYPE html>
 <title>Phần 3: EDA & Chẩn đoán — Phong Nha Kẻ Bàng</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
   :root {{
     --pnkb: #2196F3;
@@ -1185,6 +1186,10 @@ Chart.defaults.font.size   = 12;
 Chart.defaults.plugins.legend.labels.usePointStyle = true;
 Chart.defaults.plugins.legend.labels.padding = 14;
 
+// Register datalabels plugin but OFF by default — enable per chart
+Chart.register(ChartDataLabels);
+Chart.defaults.plugins.datalabels.display = false;
+
 const gridStyle = {{
   color: 'rgba(0,0,0,.06)',
   drawBorder: false
@@ -1207,13 +1212,22 @@ function baseLineOpts(yLabel='') {{
   }};
 }}
 
-function baseBarOpts(yLabel='') {{
+function baseBarOpts(yLabel='', pct=false) {{
   return {{
     responsive: true,
     maintainAspectRatio: true,
     plugins: {{
       legend: {{ position: 'top' }},
-      tooltip: {{ backgroundColor: 'rgba(26,26,46,.92)', padding: 12 }}
+      tooltip: {{ backgroundColor: 'rgba(26,26,46,.92)', padding: 12 }},
+      datalabels: {{
+        display: true,
+        anchor: 'end',
+        align: 'end',
+        offset: 2,
+        font: {{ size: 11, weight: '600' }},
+        color: '#374151',
+        formatter: (v) => v === 0 ? '' : (pct ? v.toFixed(1)+'%' : (Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1)))
+      }}
     }},
     scales: {{
       x: {{ grid: {{...gridStyle, display:false}} }},
@@ -1295,7 +1309,16 @@ new Chart(document.getElementById('chartSrcDiv'), {{
 new Chart(document.getElementById('chartAvgLen'), {{
   type: 'bar',
   data: {make_benchmark_bar(avg_len, 'Ký tự TB')},
-  options: baseBarOpts('Số ký tự')
+  options: {{
+    ...baseBarOpts('Số ký tự'),
+    plugins: {{ ...baseBarOpts('Số ký tự').plugins,
+      datalabels: {{
+        display: true, anchor:'end', align:'end', offset:2,
+        font:{{size:11,weight:'600'}}, color:'#374151',
+        formatter: v => v===0 ? '' : (v/1000).toFixed(1)+'k'
+      }}
+    }}
+  }}
 }});
 
 // ── 9. FREQUENCY ────────────────────────────────────────────────────
@@ -1312,6 +1335,14 @@ new Chart(document.getElementById('chartSrc'), {{
   options: {{
     ...baseBarOpts('Số bài viết'),
     indexAxis: 'y',
+    plugins: {{
+      ...baseBarOpts().plugins,
+      datalabels: {{
+        display: true, anchor:'end', align:'end', offset:2,
+        font:{{size:11,weight:'600'}}, color:'#374151',
+        formatter: v => v===0 ? '' : v
+      }}
+    }},
     scales: {{
       x: {{ grid: gridStyle, beginAtZero: true }},
       y: {{ grid: {{...gridStyle, display:false}} }}
@@ -1324,30 +1355,38 @@ new Chart(document.getElementById('chartCtMix'), {{
   type: 'bar',
   data: {make_ct_mix()},
   options: {{
-    ...baseBarOpts('%'),
-    plugins: {{ legend: {{ position:'top' }}, tooltip: {{ callbacks: {{ label: ctx => ` ${{ctx.dataset.label}}: ${{ctx.parsed.y.toFixed(1)}}%` }} }} }}
+    ...baseBarOpts('%', true),
+    plugins: {{
+      legend: {{ position:'top' }},
+      tooltip: {{ callbacks: {{ label: ctx => ` ${{ctx.dataset.label}}: ${{ctx.parsed.y.toFixed(1)}}%` }} }},
+      datalabels: {{
+        display: ctx => ctx.parsed.y > 1,
+        anchor:'end', align:'end', offset:1,
+        font:{{size:10,weight:'600'}}, color:'#374151',
+        formatter: v => v.toFixed(1)+'%'
+      }}
+    }}
   }}
 }});
 
 // ── 12. KEYWORD CHARTS ──────────────────────────────────────────────
-new Chart(document.getElementById('chartKwPnkb'), {{
-  type: 'bar',
-  data: {make_kw_chart('Phong Nha Kẻ Bàng')},
-  options: {{ ...baseBarOpts('Tần suất'), indexAxis:'y',
-    scales: {{ x: {{ grid:gridStyle,beginAtZero:true }}, y:{{ grid:{{...gridStyle,display:false}} }} }} }}
+const kwOpts = (color) => ({{
+  ...baseBarOpts('Tần suất'),
+  indexAxis:'y',
+  plugins: {{
+    legend: {{display:false}},
+    tooltip: {{ backgroundColor:'rgba(26,26,46,.92)', padding:12 }},
+    datalabels: {{
+      display:true, anchor:'end', align:'end', offset:2,
+      font:{{size:11,weight:'600'}}, color:'#374151',
+      formatter: v => v
+    }}
+  }},
+  scales: {{ x: {{ grid:gridStyle,beginAtZero:true }}, y:{{ grid:{{...gridStyle,display:false}} }} }}
 }});
-new Chart(document.getElementById('chartKwBana'), {{
-  type: 'bar',
-  data: {make_kw_chart('Ba Na Hills')},
-  options: {{ ...baseBarOpts('Tần suất'), indexAxis:'y',
-    scales: {{ x: {{ grid:gridStyle,beginAtZero:true }}, y:{{ grid:{{...gridStyle,display:false}} }} }} }}
-}});
-new Chart(document.getElementById('chartKwHue'), {{
-  type: 'bar',
-  data: {make_kw_chart('Cố đô Huế')},
-  options: {{ ...baseBarOpts('Tần suất'), indexAxis:'y',
-    scales: {{ x: {{ grid:gridStyle,beginAtZero:true }}, y:{{ grid:{{...gridStyle,display:false}} }} }} }}
-}});
+new Chart(document.getElementById('chartKwPnkb'), {{ type:'bar', data: {make_kw_chart('Phong Nha Kẻ Bàng')}, options: kwOpts('{COLORS['Phong Nha Kẻ Bàng']}') }});
+new Chart(document.getElementById('chartKwBana'), {{ type:'bar', data: {make_kw_chart('Ba Na Hills')},        options: kwOpts('{COLORS['Ba Na Hills']}') }});
+new Chart(document.getElementById('chartKwHue'),  {{ type:'bar', data: {make_kw_chart('Cố đô Huế')},          options: kwOpts('{COLORS['Cố đô Huế']}') }});
 
 // ── 13. CONTENT TYPE per destination ───────────────────────────────
 function ctData(dest, color) {{
@@ -1359,9 +1398,9 @@ function ctData(dest, color) {{
     datasets: [{{ label: dest, data: vals, backgroundColor: color, borderRadius:5 }}]
   }};
 }}
-new Chart(document.getElementById('chartCtPnkb'), {{ type:'bar', data: ctData('{DESTINATIONS[0]}','{COLORS[DESTINATIONS[0]]}'), options: baseBarOpts('%') }});
-new Chart(document.getElementById('chartCtBana'), {{ type:'bar', data: ctData('{DESTINATIONS[1]}','{COLORS[DESTINATIONS[1]]}'), options: baseBarOpts('%') }});
-new Chart(document.getElementById('chartCtHue'),  {{ type:'bar', data: ctData('{DESTINATIONS[2]}','{COLORS[DESTINATIONS[2]]}'), options: baseBarOpts('%') }});
+new Chart(document.getElementById('chartCtPnkb'), {{ type:'bar', data: ctData('{DESTINATIONS[0]}','{COLORS[DESTINATIONS[0]]}'), options: baseBarOpts('%', true) }});
+new Chart(document.getElementById('chartCtBana'), {{ type:'bar', data: ctData('{DESTINATIONS[1]}','{COLORS[DESTINATIONS[1]]}'), options: baseBarOpts('%', true) }});
+new Chart(document.getElementById('chartCtHue'),  {{ type:'bar', data: ctData('{DESTINATIONS[2]}','{COLORS[DESTINATIONS[2]]}'), options: baseBarOpts('%', true) }});
 
 // ── 14. SPIKE CHARTS ────────────────────────────────────────────────
 new Chart(document.getElementById('chartSpikePnkb'), {{
@@ -1394,11 +1433,17 @@ new Chart(document.getElementById('chartGap'), {{
     ...baseBarOpts('% so với mức tốt nhất'),
     plugins: {{
       legend: {{ position:'top' }},
-      tooltip: {{ callbacks: {{ label: ctx => ` ${{ctx.dataset.label}}: ${{ctx.parsed.y}}%` }} }}
+      tooltip: {{ callbacks: {{ label: ctx => ` ${{ctx.dataset.label}}: ${{ctx.parsed.y}}%` }} }},
+      datalabels: {{
+        display: ctx => ctx.parsed.y > 0,
+        anchor:'end', align:'end', offset:2,
+        font:{{size:11,weight:'600'}}, color:'#374151',
+        formatter: v => v+'%'
+      }}
     }},
     scales: {{
       x: {{ grid:{{...gridStyle,display:false}} }},
-      y: {{ grid:gridStyle, beginAtZero:true, max:110, title:{{display:true,text:'%'}} }}
+      y: {{ grid:gridStyle, beginAtZero:true, max:115, title:{{display:true,text:'%'}} }}
     }}
   }}
 }});
